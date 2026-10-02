@@ -16,6 +16,6 @@ No `npm install` is needed because there are no dependencies.
 
 ## Demo mode
 
-The GitHub Pages site (https://chenjsfrost.github.io/lunch-uncle/) is static, so it has no backend. It runs a mock agent with sample places and says "Demo mode" in the header. To make it live, deploy the backend and set its URL in `config.js`.
+The GitHub Pages site (https://chenjsfrost.github.io/lunch-uncle/) is static. It calls the backend on Render (https://lunch-uncle.onrender.com, set in `config.js`). If the backend cannot be reached, it falls back to a mock agent with sample places and says "Demo mode" in the header.
 
 See [FEATURES.md](FEATURES.md) for the features, the agent loop and the event protocol.
