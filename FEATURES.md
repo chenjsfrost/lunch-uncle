@@ -11,7 +11,7 @@ A chatbot that recommends food near you, answering like a friendly kopitiam uncl
 
 ## Features
 
-### MVP (in the wireframe now, using mock data)
+### Done
 | Feature | Status |
 |---|---|
 | Chat UI styled as a kopitiam: kopi-brown header, floor-tile background, uncle avatar | ✅ |
@@ -28,14 +28,17 @@ A chatbot that recommends food near you, answering like a friendly kopitiam uncl
 | Browser geolocation, falling back to central Singapore | ✅ |
 | Small talk (greetings, thanks) without tool calls | ✅ |
 
-### Next (needs API keys and a backend)
-- Real agentic loop on the server using the OpenCode model API
-- Google Places for real search, details, opening hours and photos
+| **Real agent loop** on the server (`server/agent.js`): an OpenCode model (`deepseek-v4.1-flash` by default) calls tools until it calls `recommend` | ✅ |
+| **Google Places (New)**: text search near you, details with reviews and hours, a photo on each card | ✅ |
+| Follow-ups ("what about the second one?"): earlier picks are kept in the history with their place ids | ✅ |
+| Demo mode fallback with sample places when no backend is reachable (GitHub Pages) | ✅ |
+
+### Next
+- Deploy the backend so the GitHub Pages site can use it (set `config.js` → backend URL)
 - Move routing to the backend using the OneMap Routing API (`routeType=walk`). It's free, made for Singapore, and covers sheltered linkways and overhead bridges, but it needs a token from a registered OneMap account, so it can't be called from the static page.
 - Live tracking via `geolocation.watchPosition` replacing the demo walk
-- Switch the map to the Google Maps JavaScript API: Google's terms don't allow showing Places data on a non-Google map, so Leaflet/OpenStreetMap is for the wireframe only
-- Remember preferences within a session (e.g. "no beef", "budget $5")
-- Follow-ups: "anything nearer?", "what about the second one?"
+- **Required before public launch:** switch the map to the Google Maps JavaScript API. Google's terms don't allow showing Places data on a non-Google map, and real Places data is now shown on Leaflet/OpenStreetMap. This needs a browser key restricted to the site's domain.
+- Remember preferences within a session (e.g. "no beef", "budget $5"). This partly works already through the history.
 - Photo carousel on place cards
 - Better uncle voice: a cloud TTS voice instead of the browser's built-in one
 
@@ -62,9 +65,11 @@ user msg ─▶ LLM (uncle system prompt + tools)
 
 | Tool | Input | Backed by |
 |---|---|---|
-| `get_user_location` | none | Browser geolocation, sent with the request |
-| `search_places` | `query`, `radius_m`, `open_now`, `price_level` | Google Places API (New): Text Search / Nearby Search |
-| `get_place_details` | `place_id` | Google Places API (New): Place Details |
+| `search_places` | `query`, `open_now`, `radius_m` | Google Places API (New): Text Search, biased to the user's location |
+| `get_place_details` | `place_id` | Google Places API (New): Place Details (reviews, hours, summary) |
+| `recommend` | `reply`, `picks: [{ place_id, note }]` | Ends the loop. The server checks the ids, then adds card data and photos. |
+
+The browser's location is sent with each request, so it isn't an LLM tool.
 
 Directions aren't an LLM tool. When you tap "Bring me there", the frontend calls `getRoute(from, place)` in `routing.js`. It returns `{ path, distance, minutes, steps: [{ at, text }], approx }`.
 
@@ -72,19 +77,28 @@ Directions aren't an LLM tool. When you tap "Bring me there", the frontend calls
 
 **Routing later:** `GET /api/route` on the backend → OneMap Routing API (walk), with Google Routes API as an option. Only `getRoute()` changes, as long as it returns the same shape.
 
-Guardrails: at most about 5 tool iterations per message, plus a timeout. If the limit is hit, uncle replies with whatever he has found so far.
+**Guardrails**
+- At most 6 model turns per message, with a 45-second timeout per model call. If the turn limit is hit, uncle replies with the best places found so far.
+- The model can only recommend place ids that tools actually returned.
+- The history is capped at 12 messages of 2,000 characters each.
+- Each IP is limited to 12 requests per minute.
+- The server only sends a fixed list of frontend files, so `.env` and the server code are never served.
 
 ## Event protocol (frontend ⇄ backend)
 
-The backend streams these as Server-Sent Events. `mock-agent.js` already yields the same shapes, so `app.js` won't need to change.
+The backend streams these as Server-Sent Events. `mock-agent.js` yields the same shapes, so `app.js` doesn't care which one is running.
+
+`POST /api/chat` with `{ history: [{ role, content }], location: { lat, lng } }` streams back:
 
 ```js
 { type: 'status',      text: 'Uncle checking the area…' }
 { type: 'tool_call',   id, name: 'search_places', label: 'Searching "chicken rice" within 1km' }
 { type: 'tool_result', id, summary: 'Found 8 places' }
 { type: 'final',       text: 'Wah, you asking the right person!…',
-  places: [{ name, rating, price, distance, open, note, place_id, lat, lng }],
-  origin: { lat, lng } }
+  places: [{ place_id, name, lat, lng, rating, reviews, price, open, address, type, distance, note, photo }],
+  origin: { lat, lng },
+  memory: 'reply + (Places shown: 1. Name [place_id]; …)' }   // what the client stores in history
+{ type: 'error', message }
 ```
 
 ## Files
@@ -92,13 +106,20 @@ The backend streams these as Server-Sent Events. `mock-agent.js` already yields 
 ```
 index.html      layout, directions panel, uncle SVG template (Leaflet from cdnjs)
 styles.css      kopitiam theme + all animations
+config.js       backend URL ('' = same origin)
 app.js          UI, voice, location, event handling (only depends on runAgent)
+api-agent.js    runAgent(): streams from /api/chat, falls back to mock-agent.js
 routing.js      real walking directions (OSRM foot) + uncle-style step text
 mock-agent.js   fake agent loop with sample places; replace with backend client
-.env.example    keys the backend will need (never put keys in frontend code)
+server/
+  index.js      HTTP server: static files, /api/health, /api/chat (SSE), CORS, rate limit
+  agent.js      the agent loop, uncle system prompt, tool definitions
+  llm.js        OpenCode Zen chat completions
+  places.js     Google Places search / details / photos
+.env.example    keys and options (never put keys in frontend code)
 ```
 
-## When the keys arrive
-1. Add a small backend (e.g. Node/Express) with `POST /api/chat` that runs the loop and streams events.
-2. Put `OPENCODE_API_KEY` and `GOOGLE_PLACES_API_KEY` in `.env` on the server.
-3. Replace `mock-agent.js` with a `runAgent()` that calls `/api/chat` and yields the parsed SSE events.
+## Deploying the backend
+GitHub Pages can only host static files, so the backend needs a host that runs Node, such as Render, Railway or Fly.io. Then:
+1. Set the env vars from `.env.example` on the host.
+2. Put the backend URL in `config.js` and push. The Pages site then switches out of demo mode.
