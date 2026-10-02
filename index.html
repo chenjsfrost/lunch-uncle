@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Lunch Uncle</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app">
+    <header class="header">
+      <div class="uncle uncle--big" id="header-uncle"></div>
+      <div class="header__text">
+        <h1>Lunch Uncle</h1>
+        <p class="header__status"><span class="dot"></span><span id="header-status">Sitting at kopitiam, ready to makan</span></p>
+      </div>
+      <button class="voice-toggle" id="voice-toggle" type="button" aria-pressed="true" title="Uncle voice on/off">🔊</button>
+    </header>
+
+    <main class="chat" id="chat" aria-live="polite"></main>
+
+    <div class="chips" id="chips">
+      <button class="chip" type="button">Cheap &amp; good</button>
+      <button class="chip" type="button">Chicken rice nearby</button>
+      <button class="chip" type="button">Halal options</button>
+      <button class="chip" type="button">Supper spot</button>
+      <button class="chip" type="button">Something healthy</button>
+    </div>
+
+    <form class="composer" id="composer">
+      <input id="input" autocomplete="off" placeholder="Ask uncle: eat what ah?" aria-label="Message">
+      <button type="submit" class="send" id="send">Send</button>
+    </form>
+
+    <!-- In-chat directions: opens over the chat, never leaves the app -->
+    <section class="nav" id="nav" hidden aria-label="Directions">
+      <div class="nav__bar">
+        <button class="nav__back" id="nav-back" type="button">← Chat</button>
+        <div class="nav__title"><strong id="nav-title"></strong><span id="nav-eta"></span></div>
+      </div>
+      <div class="nav__map" id="nav-map"></div>
+      <div class="nav__sheet">
+        <div class="nav__say">
+          <div class="uncle uncle--small" id="nav-uncle"></div>
+          <div class="bubble" id="nav-say"></div>
+        </div>
+        <ol class="nav__steps" id="nav-steps"></ol>
+        <button class="nav__walk" id="nav-walk" type="button">🚶 Start walking (demo)</button>
+      </div>
+    </section>
+  </div>
+
+  <template id="uncle-template">
+    <svg viewBox="0 0 100 100" aria-hidden="true">
+      <!-- singlet + towel on shoulder -->
+      <path d="M16 100 C18 84 32 78 50 78 C68 78 82 84 84 100 Z" fill="#fff" stroke="#d9cfc0" stroke-width="1.5"/>
+      <path d="M64 79 C74 81 81 88 83 100 L71 100 C69 92 65 86 58 82 Z" fill="#e8f1fb"/>
+      <path d="M69 82 L76 100" stroke="#3b78c4" stroke-width="2.5"/>
+      <g class="head">
+        <circle cx="21" cy="50" r="6" fill="#e9b888"/>
+        <circle cx="79" cy="50" r="6" fill="#e9b888"/>
+        <ellipse cx="50" cy="48" rx="29" ry="31" fill="#f2c79a"/>
+        <!-- side hair + comb-over -->
+        <path d="M23 46 C22 32 27 25 32 22" stroke="#a3a3a3" stroke-width="5" fill="none" stroke-linecap="round"/>
+        <path d="M77 46 C78 32 73 25 68 22" stroke="#a3a3a3" stroke-width="5" fill="none" stroke-linecap="round"/>
+        <path d="M37 21 C45 16 56 16 64 21" stroke="#a3a3a3" stroke-width="2" fill="none" stroke-linecap="round"/>
+        <path d="M39 24 C47 20 55 20 62 24" stroke="#a3a3a3" stroke-width="2" fill="none" stroke-linecap="round"/>
+        <g class="brows" stroke="#6d6d6d" stroke-width="3.5" stroke-linecap="round">
+          <path d="M31 36 L45 35"/><path d="M55 35 L69 36"/>
+        </g>
+        <g class="eyes" fill="#2a1d14">
+          <circle cx="39" cy="47" r="2.6"/><circle cx="61" cy="47" r="2.6"/>
+        </g>
+        <g stroke="#3a2a20" stroke-width="2.5" fill="rgba(255,255,255,.3)">
+          <circle cx="39" cy="47" r="9"/><circle cx="61" cy="47" r="9"/>
+          <path d="M48 47 L52 47" fill="none"/>
+        </g>
+        <path d="M50 52 C48 57 47 59 51 60" stroke="#c98f5f" stroke-width="2" fill="none" stroke-linecap="round"/>
+        <circle cx="30" cy="60" r="4" fill="#f29c8a" opacity=".5"/>
+        <circle cx="70" cy="60" r="4" fill="#f29c8a" opacity=".5"/>
+        <path class="mouth" d="M43 69 C47 73 53 73 57 69" stroke="#7a3b2a" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+        <path d="M37 65 C42 60 47 62 50 64 C53 62 58 60 63 65 C57 66 53 66 50 65 C47 66 43 66 37 65 Z" fill="#7d7d7d"/>
+      </g>
+    </svg>
+  </template>
+
+  <!-- Swap mock-agent.js for a real backend client later; app.js only depends on runAgent(). -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+  <script src="mock-agent.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
