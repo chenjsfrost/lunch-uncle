@@ -1,0 +1,25 @@
+# Render Blueprint: one free web service running the Lunch Uncle backend.
+# Deploy: https://render.com/deploy?repo=https://github.com/chenjsfrost/lunch-uncle
+services:
+  - type: web
+    name: lunch-uncle
+    runtime: node
+    plan: free
+    region: singapore
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: OPENCODE_API_KEY
+        sync: false # Render asks for this on first deploy
+      - key: GOOGLE_PLACES_API_KEY
+        sync: false # Render asks for this on first deploy
+      - key: OPENCODE_MODEL
+        value: deepseek-v4.1-flash
+      - key: ALLOWED_ORIGINS
+        value: https://chenjsfrost.github.io
+      - key: TRUST_PROXY
+        value: "1"
+      - key: NODE_VERSION
+        value: "24"

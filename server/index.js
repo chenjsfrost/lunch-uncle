@@ -36,8 +36,22 @@ const isAllowedOrigin = (o) => ALLOWED_ORIGINS.includes(o) || /^http:\/\/(localh
 // Simple per-IP limit so a public URL can't burn through the API keys.
 const RATE_LIMIT = Number(process.env.RATE_LIMIT_PER_MIN) || 12;
 const hits = new Map();
+
+// Behind a proxy (Render), every request comes from the proxy's IP. The proxy
+// appends the real client IP as the last X-Forwarded-For entry; earlier entries
+// can be spoofed by the client, so only the last one is trusted.
+const TRUST_PROXY = Boolean(process.env.TRUST_PROXY);
+function clientIp(req) {
+  const xff = TRUST_PROXY && req.headers['x-forwarded-for'];
+  if (xff) return xff.split(',').pop().trim();
+  return req.socket.remoteAddress || 'unknown';
+}
+
 function rateLimited(ip) {
   const now = Date.now();
+  if (hits.size > 5000) {
+    for (const [key, times] of hits) if (now - times[times.length - 1] > 60000) hits.delete(key);
+  }
   const recent = (hits.get(ip) || []).filter((t) => now - t < 60000);
   recent.push(now);
   hits.set(ip, recent);
@@ -75,7 +89,7 @@ function cleanOrigin(loc) {
 }
 
 async function handleChat(req, res) {
-  const ip = req.socket.remoteAddress || 'unknown';
+  const ip = clientIp(req);
   if (rateLimited(ip)) return sendJson(res, 429, { error: 'Too many requests. Uncle need to rest a while.' });
 
   let body;

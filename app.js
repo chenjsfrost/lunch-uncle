@@ -430,7 +430,11 @@ $('#chips').addEventListener('click', (e) => {
 });
 
 let idleStatus = headerStatus.textContent;
+const wakeTimer = setTimeout(() => {
+  if (!busy) headerStatus.textContent = 'Uncle waking up, wait ah…';
+}, 1500);
 backendAvailable().then((live) => {
+  clearTimeout(wakeTimer);
   if (!live) idleStatus = 'Demo mode: sample places only';
   if (!busy) headerStatus.textContent = idleStatus;
 });

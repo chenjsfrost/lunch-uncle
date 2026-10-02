@@ -119,7 +119,9 @@ server/
 .env.example    keys and options (never put keys in frontend code)
 ```
 
-## Deploying the backend
-GitHub Pages can only host static files, so the backend needs a host that runs Node, such as Render, Railway or Fly.io. Then:
-1. Set the env vars from `.env.example` on the host.
-2. Put the backend URL in `config.js` and push. The Pages site then switches out of demo mode.
+## Deploying the backend (Render)
+`render.yaml` is a Render Blueprint: one free web service in Singapore.
+1. Open https://render.com/deploy?repo=https://github.com/chenjsfrost/lunch-uncle, sign in, and paste `OPENCODE_API_KEY` and `GOOGLE_PLACES_API_KEY` when asked.
+2. Put the service URL (e.g. `https://lunch-uncle.onrender.com`) in `RENDER_URL` in `config.js`, then push. The Pages site then switches out of demo mode.
+
+On the free plan the service sleeps after about 15 minutes idle. The first visit afterwards wakes it (up to about a minute), and the header shows "Uncle waking up, wait ah…" meanwhile. Pushes to `main` redeploy automatically.

@@ -4,12 +4,18 @@
 
 const API_BASE = (window.LUNCH_UNCLE_API || '').replace(/\/$/, '');
 
+// A free Render instance sleeps when idle and can take up to ~a minute to
+// wake, so wait generously before giving up and falling back to demo mode.
+const WAKE_TIMEOUT_MS = 75000;
+
 let backendCheck = null;
+let backendKnown = false;
 function backendAvailable() {
-  backendCheck ??= fetch(`${API_BASE}/api/health`, { signal: AbortSignal.timeout(4000) })
+  backendCheck ??= fetch(`${API_BASE}/api/health`, { signal: AbortSignal.timeout(WAKE_TIMEOUT_MS) })
     .then((r) => (r.ok ? r.json() : null))
     .then((d) => Boolean(d?.ok))
-    .catch(() => false);
+    .catch(() => false)
+    .finally(() => { backendKnown = true; });
   return backendCheck;
 }
 
@@ -31,6 +37,7 @@ async function* readEvents(res) {
 }
 
 async function* runAgent(history, ctx) {
+  if (!backendKnown) yield { type: 'status', text: 'Uncle waking up, wait ah…' };
   if (!(await backendAvailable())) {
     yield* mockRunAgent(history, ctx);
     return;
