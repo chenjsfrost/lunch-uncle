@@ -296,7 +296,8 @@ async function openNav(place) {
 
   setUncleState(navUncle, 'idle');
   navRoute = route;
-  navEta.textContent = `🚶 ${route.minutes} min walk · ${route.distance} m`;
+  const dist = route.distance >= 1000 ? `${(route.distance / 1000).toFixed(1)} km` : `${route.distance} m`;
+  navEta.textContent = `🚶 ${route.minutes} min walk · ${dist}${route.approx ? ' (rough)' : ''}`;
   route.steps.forEach((step) => {
     const li = document.createElement('li');
     li.textContent = step.text;
@@ -304,7 +305,9 @@ async function openNav(place) {
   });
   navWalk.disabled = false;
   drawRoute(origin, route);
-  uncleSays(`Okay, follow uncle ah! ${route.minutes} minutes walk only. Press start when you ready.`);
+  uncleSays(route.approx
+    ? "Aiyo, uncle's map signal weak. This one rough direction only ah. Press start when you ready."
+    : `Okay, follow uncle ah! ${route.minutes} minutes walk only. Press start when you ready.`);
 }
 
 // Demo only: moves your dot along the route. The real version will follow
@@ -315,7 +318,7 @@ function startWalk() {
   const pts = navRoute.path;
   const segs = pts.slice(1).map((p, i) => metres(pts[i], p));
   const total = segs.reduce((a, b) => a + b, 0);
-  const duration = 16000;
+  const duration = Math.max(16000, navRoute.steps.length * 3500); // time for uncle to speak each step
   const t0 = performance.now();
   let lastStep = -1;
   navWalk.disabled = true;

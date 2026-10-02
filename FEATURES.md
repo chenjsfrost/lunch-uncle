@@ -22,6 +22,7 @@ A chatbot that recommends food near you, answering like a friendly kopitiam uncl
 | Place cards: number, name, open/closed, rating, price, distance, uncle's comment | ✅ |
 | Mini map in uncle's reply with you plus numbered pins (tap a pin to get directions) | ✅ |
 | **In-app directions** ("Bring me there"): full map, walking route, ETA, uncle reading each step aloud, "Reached!" message back in chat. You never leave the app. | ✅ |
+| **Real walking routes** that follow walkways and streets, never cutting through buildings. Turn-by-turn steps are in uncle's words, tiny crossing jogs are merged, and sample places are snapped onto walkways. | ✅ |
 | Demo "Start walking" that moves your dot along the route and updates the current step and distance left | ✅ |
 | Uncle voice (Web Speech API) with an on/off toggle | ✅ |
 | Browser geolocation, falling back to central Singapore | ✅ |
@@ -30,7 +31,8 @@ A chatbot that recommends food near you, answering like a friendly kopitiam uncl
 ### Next (needs API keys and a backend)
 - Real agentic loop on the server using the OpenCode model API
 - Google Places for real search, details, opening hours and photos
-- Real walking routes from the Google Routes API, with live tracking via `geolocation.watchPosition` replacing the demo walk
+- Move routing to the backend using the OneMap Routing API (`routeType=walk`). It's free, made for Singapore, and covers sheltered linkways and overhead bridges, but it needs a token from a registered OneMap account, so it can't be called from the static page.
+- Live tracking via `geolocation.watchPosition` replacing the demo walk
 - Switch the map to the Google Maps JavaScript API: Google's terms don't allow showing Places data on a non-Google map, so Leaflet/OpenStreetMap is for the wireframe only
 - Remember preferences within a session (e.g. "no beef", "budget $5")
 - Follow-ups: "anything nearer?", "what about the second one?"
@@ -64,7 +66,11 @@ user msg ─▶ LLM (uncle system prompt + tools)
 | `search_places` | `query`, `radius_m`, `open_now`, `price_level` | Google Places API (New): Text Search / Nearby Search |
 | `get_place_details` | `place_id` | Google Places API (New): Place Details |
 
-Directions aren't an LLM tool. When you tap "Bring me there", the frontend calls `getRoute(from, place)` directly. That call is mocked in `mock-agent.js` now and will become `GET /api/route` → Google Routes API (`travelMode: WALK`). It returns `{ path, distance, minutes, steps: [{ at, text }] }`. The uncle-style wording for each step can come from a short LLM rewrite of Google's instructions, or from templates.
+Directions aren't an LLM tool. When you tap "Bring me there", the frontend calls `getRoute(from, place)` in `routing.js`. It returns `{ path, distance, minutes, steps: [{ at, text }], approx }`.
+
+**Routing now:** the free FOSSGIS OSRM server (`routing.openstreetmap.de/routed-foot`), which uses OpenStreetMap data with the walking profile. It needs no key and allows browser requests from any site. It's a fair-use public server, fine for a prototype but not for production traffic. If it's unreachable, uncle falls back to a rough straight-line direction and says it's approximate.
+
+**Routing later:** `GET /api/route` on the backend → OneMap Routing API (walk), with Google Routes API as an option. Only `getRoute()` changes, as long as it returns the same shape.
 
 Guardrails: at most about 5 tool iterations per message, plus a timeout. If the limit is hit, uncle replies with whatever he has found so far.
 
@@ -87,7 +93,8 @@ The backend streams these as Server-Sent Events. `mock-agent.js` already yields 
 index.html      layout, directions panel, uncle SVG template (Leaflet from cdnjs)
 styles.css      kopitiam theme + all animations
 app.js          UI, voice, location, event handling (only depends on runAgent)
-mock-agent.js   fake agent loop + fake getRoute() with sample places; replace with backend client
+routing.js      real walking directions (OSRM foot) + uncle-style step text
+mock-agent.js   fake agent loop with sample places; replace with backend client
 .env.example    keys the backend will need (never put keys in frontend code)
 ```
 

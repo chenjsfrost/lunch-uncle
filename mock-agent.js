@@ -7,7 +7,7 @@
 //   { type: 'tool_result', id, summary }        tool finished
 //   { type: 'final',       text, places?, origin? }   uncle's answer
 //
-// getRoute(from, place) returns walking directions for the in-chat map.
+// Walking directions live in routing.js (real router, not mocked).
 //
 // All places below are fictional sample data.
 
@@ -126,7 +126,11 @@ async function* runAgent(history, ctx) {
   yield { type: 'status', text: pick(STATUS.deciding) };
   yield { type: 'tool_call', id: 'details', name: 'get_place_details', label: 'Checking reviews & opening hours' };
   await sleep(1000);
-  const top = results.slice(0, 3).map((p) => ({ ...p, ...placeLocation(loc, p) }));
+  // Sample places get scattered around you, then snapped onto a walkway so the
+  // pins never land inside a building or in the sea.
+  const top = await Promise.all(
+    results.slice(0, 3).map(async (p) => ({ ...p, ...(await snapToWalkway(placeLocation(loc, p))) })),
+  );
   yield { type: 'tool_result', id: 'details', summary: `Shortlisted top ${top.length}` };
 
   yield { type: 'final', text: compose(intent, top, matched), places: top, origin: loc };
@@ -152,29 +156,4 @@ function hash(str) {
 function placeLocation(from, place) {
   const bearing = ((hash(place.name) % 360) * Math.PI) / 180;
   return offset(from, place.distance * Math.sin(bearing), place.distance * Math.cos(bearing));
-}
-
-// Mock walking route: an L-shaped path with uncle-style instructions.
-// Later this becomes a backend call to the Google Routes API (travelMode: WALK).
-// Each step's `at` is the index of the path point where that step begins.
-async function getRoute(from, place) {
-  await sleep(500);
-  const east = (place.lng - from.lng) * M_PER_DEG * Math.cos((from.lat * Math.PI) / 180);
-  const north = (place.lat - from.lat) * M_PER_DEG;
-  const leg1 = Math.round(Math.abs(east));
-  const leg2 = Math.round(Math.abs(north));
-  // Heading east then turning north is a left turn; each flip of sign swaps it.
-  const turn = (east >= 0) === (north >= 0) ? 'left' : 'right';
-  const side = hash(place.name) % 2 ? 'left' : 'right';
-  const distance = leg1 + leg2;
-  return {
-    path: [from, offset(from, east, 0), { lat: place.lat, lng: place.lng }],
-    distance,
-    minutes: Math.max(1, Math.round(distance / 80)),
-    steps: [
-      { at: 0, text: `Walk ${east >= 0 ? 'east' : 'west'} along the main road, about ${leg1} metres. Use the traffic light ah, don't anyhow jaywalk.` },
-      { at: 1, text: `Turn ${turn} at the junction, then walk straight ${leg2} metres.` },
-      { at: 2, text: `${place.name} is on your ${side}. Reached already! Enjoy your makan!` },
-    ],
-  };
 }
