@@ -115,7 +115,7 @@ async function* mockRunAgent(history, ctx) {
 
   yield { type: 'tool_call', id: 'loc', name: 'get_user_location', label: 'Checking where you are' };
   const loc = await ctx.getLocation();
-  yield { type: 'tool_result', id: 'loc', summary: `You're at ${loc.label}` };
+  yield { type: 'tool_result', id: 'loc', summary: `You're ${loc.label}` };
 
   yield { type: 'status', text: pick(STATUS.searching) };
   yield { type: 'tool_call', id: 'search', name: 'search_places', label: `Searching "${intent.query}" within 1km` };

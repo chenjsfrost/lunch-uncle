@@ -123,3 +123,73 @@ export async function photoUrl(photoName, { signal } = {}) {
     return null;
   }
 }
+
+// ---------- "where am I" (reverse geocoding from Places Nearby) ----------
+// The Geocoding API isn't enabled on this key, so describe the location by the
+// most recognisable landmark nearby plus its neighbourhood, e.g.
+// "near Bugis Street, Rochor". Lower rank = more recognisable type; a landmark
+// wins over a closer but less known one when rank * RANK_WEIGHT_M outweighs
+// distance. Popular places (many Google reviews) get a bonus, so "Marina Bay
+// Sands" beats a lobby counter inside it.
+const LANDMARK_RANK = {
+  shopping_mall: 0, subway_station: 0, train_station: 0, light_rail_station: 0,
+  tourist_attraction: 1, university: 1, hospital: 1,
+  park: 2, hotel: 2, stadium: 2, library: 2,
+  community_center: 3, market: 3, food_court: 3, housing_complex: 3, apartment_complex: 3,
+  school: 4,
+  bus_station: 5, transit_station: 5, bus_stop: 5,
+};
+const RANK_WEIGHT_M = 150;
+const POPULARITY_WEIGHT_M = 80; // per 10x reviews
+const MIN_REVIEWS = 20; // below this, a non-mall/MRT place is too obscure to name
+const WHERE_RADIUS_M = 400;
+
+const whereCache = new Map();
+
+function component(place, type) {
+  return (place.addressComponents || []).find((c) => c.types?.includes(type))?.longText || null;
+}
+
+export async function whereAmI(origin, { signal } = {}) {
+  // ~100 m grid, so people moving around a block share one lookup.
+  const key = `${origin.lat.toFixed(3)},${origin.lng.toFixed(3)}`;
+  if (whereCache.has(key)) return whereCache.get(key);
+
+  const data = await google('places:searchNearby', {
+    method: 'POST',
+    fields: 'places.displayName,places.primaryType,places.types,places.location,places.addressComponents,places.userRatingCount',
+    body: {
+      includedTypes: Object.keys(LANDMARK_RANK),
+      locationRestriction: { circle: { center: { latitude: origin.lat, longitude: origin.lng }, radius: WHERE_RADIUS_M } },
+      rankPreference: 'DISTANCE',
+      maxResultCount: 20,
+      languageCode: 'en',
+    },
+    signal,
+  });
+
+  const places = data.places || [];
+  const scored = places
+    .map((p) => {
+      const rank = Math.min(...(p.types || [p.primaryType]).map((t) => LANDMARK_RANK[t] ?? Infinity));
+      const loc = { lat: p.location?.latitude, lng: p.location?.longitude };
+      const popularity = Math.log10((p.userRatingCount || 0) + 1) * POPULARITY_WEIGHT_M;
+      return { p, rank, score: rank * RANK_WEIGHT_M + distanceM(origin, loc) - popularity };
+    })
+    .filter((x) => Number.isFinite(x.rank) && (x.rank === 0 || (x.p.userRatingCount || 0) >= MIN_REVIEWS))
+    .sort((a, b) => a.score - b.score);
+
+  const best = scored[0]?.p;
+  const hood = places.map((p) => component(p, 'neighborhood') || component(p, 'sublocality_level_1') || component(p, 'sublocality')).find(Boolean);
+  const name = best?.displayName?.text;
+
+  let label = null;
+  if (name && hood && !name.includes(hood)) label = `near ${name}, ${hood}`;
+  else if (name) label = `near ${name}`;
+  else if (hood) label = `in ${hood}`;
+
+  const result = { label, landmark: name || null, area: hood || null };
+  whereCache.set(key, result);
+  if (whereCache.size > 2000) whereCache.delete(whereCache.keys().next().value);
+  return result;
+}

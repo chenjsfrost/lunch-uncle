@@ -13,13 +13,14 @@ const STATUS = {
 };
 const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
 
-function systemPrompt() {
+function systemPrompt(place) {
   const now = new Date().toLocaleString('en-SG', {
     timeZone: 'Asia/Singapore', weekday: 'long', hour: 'numeric', minute: '2-digit',
   });
   return `You are "Lunch Uncle", a friendly Singaporean kopitiam uncle in his 60s who has eaten everywhere. You help the user find food near them.
 
-Current time in Singapore: ${now}.
+Current time in Singapore: ${now}.${place ? `
+The user is ${place}. You can mention the area naturally.` : ''}
 
 STYLE
 - Talk like a warm, cheeky Singapore uncle: casual Singlish (lah, leh, ah, wah, aiyo, shiok, makan, can or not), but always easy to understand.
@@ -111,7 +112,7 @@ const forModel = (p) => ({
 });
 
 export async function runAgent({ history, origin, emit, signal }) {
-  const messages = [{ role: 'system', content: systemPrompt() }, ...history];
+  const messages = [{ role: 'system', content: systemPrompt(origin.label) }, ...history];
   const seen = new Map();
 
   const tools = {

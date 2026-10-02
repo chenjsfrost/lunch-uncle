@@ -36,6 +36,21 @@ async function* readEvents(res) {
   }
 }
 
+// Turn coordinates into "near Bugis Street, Rochor". Looked up once per
+// location; falls back to the coordinate label if the lookup fails.
+const placeNames = new Map();
+function describeLocation(loc) {
+  if (loc.approx) return Promise.resolve(loc.label);
+  const key = `${loc.lat.toFixed(4)},${loc.lng.toFixed(4)}`;
+  if (!placeNames.has(key)) {
+    placeNames.set(key, fetch(`${API_BASE}/api/where?lat=${loc.lat}&lng=${loc.lng}`, { signal: AbortSignal.timeout(8000) })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => d?.label || loc.label)
+      .catch(() => loc.label));
+  }
+  return placeNames.get(key);
+}
+
 async function* runAgent(history, ctx) {
   if (!backendKnown) yield { type: 'status', text: 'Uncle waking up, wait ah…' };
   if (!(await backendAvailable())) {
@@ -45,12 +60,13 @@ async function* runAgent(history, ctx) {
 
   yield { type: 'tool_call', id: 'loc', name: 'get_user_location', label: 'Checking where you are' };
   const loc = await ctx.getLocation();
-  yield { type: 'tool_result', id: 'loc', summary: `You're at ${loc.label}` };
+  const place = await describeLocation(loc);
+  yield { type: 'tool_result', id: 'loc', summary: `You're ${place}` };
 
   const res = await fetch(`${API_BASE}/api/chat`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ history, location: { lat: loc.lat, lng: loc.lng } }),
+    body: JSON.stringify({ history, location: { lat: loc.lat, lng: loc.lng }, place }),
   });
   if (res.status === 429) {
     yield { type: 'final', text: 'Wah, so many questions! Uncle need to catch his breath. Wait one minute then ask again ah.' };

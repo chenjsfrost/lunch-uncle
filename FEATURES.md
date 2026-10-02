@@ -32,6 +32,7 @@ A chatbot that recommends food near you, answering like a friendly kopitiam uncl
 | **Google Places (New)**: text search near you, details with reviews and hours, a photo on each card | ✅ |
 | Follow-ups ("what about the second one?"): earlier picks are kept in the history with their place ids | ✅ |
 | Demo mode fallback with sample places when no backend is reachable (GitHub Pages) | ✅ |
+| Place name instead of coordinates ("You're near AMK Hub, Ang Mo Kio") from `GET /api/where`. It uses Places Nearby and ranks landmarks by type (malls and MRT stations first), distance and popularity. Uncle also gets the area name. | ✅ |
 
 ### Next
 - Deploy the backend so the GitHub Pages site can use it (set `config.js` → backend URL)

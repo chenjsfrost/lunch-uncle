@@ -1,5 +1,6 @@
 // Lunch Uncle backend: serves the app and runs the agent.
 //   GET  /api/health  → { ok, model }
+//   GET  /api/where?lat=&lng= → { label, landmark, area }, e.g. "near Bugis Street, Rochor"
 //   POST /api/chat    → Server-Sent Events: status, tool_call, tool_result, final, error
 //
 // Run: npm start  (reads keys from .env)
@@ -10,7 +11,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { runAgent } from './agent.js';
 import { MODEL, hasLlmKey } from './llm.js';
-import { hasPlacesKey } from './places.js';
+import { hasPlacesKey, whereAmI } from './places.js';
 
 const PORT = Number(process.env.PORT) || 8787;
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -82,6 +83,7 @@ function cleanHistory(history) {
 }
 
 function cleanOrigin(loc) {
+  if (loc?.lat == null || loc?.lng == null || loc.lat === '' || loc.lng === '') return null;
   const lat = Number(loc?.lat);
   const lng = Number(loc?.lng);
   if (!Number.isFinite(lat) || !Number.isFinite(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180) return null;
@@ -98,6 +100,7 @@ async function handleChat(req, res) {
   const origin = cleanOrigin(body.location);
   if (!history.length || history[history.length - 1].role !== 'user') return sendJson(res, 400, { error: 'Last message must be from the user' });
   if (!origin) return sendJson(res, 400, { error: 'Missing location' });
+  if (typeof body.place === 'string' && body.place.trim()) origin.label = body.place.replace(/[\r\n]+/g, ' ').trim().slice(0, 120);
 
   res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', Connection: 'keep-alive' });
   const abort = new AbortController();
@@ -113,6 +116,18 @@ async function handleChat(req, res) {
     }
   }
   res.end();
+}
+
+async function handleWhere(req, res, url) {
+  if (rateLimited(clientIp(req))) return sendJson(res, 429, { error: 'Too many requests' });
+  const origin = cleanOrigin({ lat: url.searchParams.get('lat'), lng: url.searchParams.get('lng') });
+  if (!origin) return sendJson(res, 400, { error: 'Missing lat/lng' });
+  try {
+    sendJson(res, 200, await whereAmI(origin));
+  } catch (err) {
+    console.error('[where]', err.message);
+    sendJson(res, 502, { error: 'Lookup failed' });
+  }
 }
 
 function sendJson(res, status, data) {
@@ -142,8 +157,10 @@ const server = http.createServer(async (req, res) => {
   }
   if (req.method === 'OPTIONS') return res.writeHead(204).end();
 
-  const { pathname } = new URL(req.url, 'http://x');
+  const url = new URL(req.url, 'http://x');
+  const { pathname } = url;
   if (pathname === '/api/health' && req.method === 'GET') return sendJson(res, 200, { ok: hasLlmKey() && hasPlacesKey(), model: MODEL });
+  if (pathname === '/api/where' && req.method === 'GET') return handleWhere(req, res, url);
   if (pathname === '/api/chat' && req.method === 'POST') return handleChat(req, res);
   if (req.method === 'GET') return serveStatic(req, res);
   sendJson(res, 405, { error: 'Method not allowed' });

@@ -31,7 +31,7 @@ function setUncleState(el, state) {
 // ---------- location (exposed to the agent as a tool) ----------
 let locationPromise = null;
 function getLocation() {
-  const fallback = { lat: 1.2932, lng: 103.852, label: "City Hall (couldn't get your location)" };
+  const fallback = { lat: 1.2932, lng: 103.852, label: "at City Hall (couldn't get your location)", approx: true };
   if (!locationPromise) {
     locationPromise = new Promise((resolve) => {
       if (!navigator.geolocation) return resolve(fallback);
@@ -39,7 +39,7 @@ function getLocation() {
       navigator.geolocation.getCurrentPosition(
         ({ coords }) => {
           clearTimeout(timer);
-          resolve({ lat: coords.latitude, lng: coords.longitude, label: `${coords.latitude.toFixed(4)}, ${coords.longitude.toFixed(4)}` });
+          resolve({ lat: coords.latitude, lng: coords.longitude, label: `at ${coords.latitude.toFixed(4)}, ${coords.longitude.toFixed(4)}` });
         },
         () => { clearTimeout(timer); resolve(fallback); },
         { timeout: 5000, maximumAge: 600000 },
