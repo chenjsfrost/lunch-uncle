@@ -31,7 +31,7 @@ function setUncleState(el, state) {
 // ---------- location (exposed to the agent as a tool) ----------
 let locationPromise = null;
 function getLocation() {
-  const fallback = { lat: 1.3521, lng: 103.8198, label: 'somewhere in Singapore (approx.)' };
+  const fallback = { lat: 1.2932, lng: 103.852, label: "City Hall (couldn't get your location)" };
   if (!locationPromise) {
     locationPromise = new Promise((resolve) => {
       if (!navigator.geolocation) return resolve(fallback);
@@ -68,16 +68,23 @@ function addUserMsg(text) {
 function placeCard(p, i) {
   const card = document.createElement('div');
   card.className = 'place';
-  const dist = p.distance < 1000 ? `${p.distance} m` : `${(p.distance / 1000).toFixed(1)} km`;
+  const dist = p.distance == null ? null : p.distance < 1000 ? `${p.distance} m away` : `${(p.distance / 1000).toFixed(1)} km away`;
+  const rating = p.rating == null ? null : `⭐ ${p.rating}${p.reviews ? ` (${p.reviews.toLocaleString()})` : ''}`;
+  const badge = p.open == null ? '' : `<span class="badge ${p.open ? '' : 'badge--closed'}">${p.open ? 'Open now' : 'Closed'}</span>`;
   card.innerHTML = `
-    <div class="place__top"><span></span><span class="badge ${p.open ? '' : 'badge--closed'}">${p.open ? 'Open now' : 'Closed'}</span></div>
-    <div class="place__meta">⭐ ${p.rating} · ${p.price} · ${dist} away</div>
+    ${p.photo ? '<img class="place__photo" alt="" loading="lazy" referrerpolicy="no-referrer">' : ''}
+    <div class="place__top"><span></span>${badge}</div>
+    <div class="place__meta"></div>
     <p class="place__note"></p>
     <button class="place__go" type="button">Bring me there →</button>`;
+  if (p.photo) card.querySelector('.place__photo').src = p.photo;
   const title = card.querySelector('.place__top span');
   title.innerHTML = `<span class="place__num">${i + 1}</span>`;
   title.append(p.name);
-  card.querySelector('.place__note').textContent = p.note;
+  card.querySelector('.place__meta').textContent = [rating, p.price, dist, p.address].filter(Boolean).join(' · ');
+  const note = card.querySelector('.place__note');
+  if (p.note) note.textContent = p.note;
+  else note.remove();
   card.querySelector('.place__go').addEventListener('click', () => openNav(p));
   return card;
 }
@@ -395,7 +402,7 @@ async function send(text) {
         thinking.remove();
         setUncleState(headerUncle, 'idle');
         const avatar = addUncleMsg(ev.text, ev.places, ev.origin);
-        history.push({ role: 'assistant', content: ev.text });
+        history.push({ role: 'assistant', content: ev.memory || ev.text });
         speak(ev.text, avatar);
       }
     }
@@ -405,7 +412,7 @@ async function send(text) {
     addUncleMsg("Aiyo, uncle's brain hang already. Try again leh?");
   } finally {
     setUncleState(headerUncle, 'idle');
-    headerStatus.textContent = 'Sitting at kopitiam, ready to makan';
+    headerStatus.textContent = idleStatus;
     busy = false;
     app.classList.remove('busy');
     input.focus();
@@ -420,6 +427,12 @@ form.addEventListener('submit', (e) => {
 });
 $('#chips').addEventListener('click', (e) => {
   if (e.target.classList.contains('chip')) send(e.target.textContent);
+});
+
+let idleStatus = headerStatus.textContent;
+backendAvailable().then((live) => {
+  if (!live) idleStatus = 'Demo mode: sample places only';
+  if (!busy) headerStatus.textContent = idleStatus;
 });
 
 addUncleMsg("Eh, hello! I'm Lunch Uncle. Tell me what you feel like eating and uncle find something nice near you. Or just tap one of the buttons below lah.");

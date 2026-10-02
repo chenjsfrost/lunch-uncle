@@ -1,6 +1,7 @@
-// Mock agent loop for the wireframe.
+// Mock agent loop: demo mode with sample places, used when no backend is
+// reachable (e.g. on GitHub Pages). The real agent runs in server/agent.js.
 //
-// runAgent(history, ctx) is an async generator that yields the same events the
+// mockRunAgent(history, ctx) is an async generator that yields the same events the
 // real backend will stream later (see FEATURES.md → "Event protocol"):
 //   { type: 'status',      text }               uncle's thinking line
 //   { type: 'tool_call',   id, name, label }    agent started a tool
@@ -94,7 +95,7 @@ function compose(intent, places, matched) {
   return [intro, ...lines, pick(CLOSERS)].join('\n');
 }
 
-async function* runAgent(history, ctx) {
+async function* mockRunAgent(history, ctx) {
   const text = history[history.length - 1].content.trim();
   const lower = text.toLowerCase();
 

@@ -85,10 +85,12 @@
     </svg>
   </template>
 
-  <!-- Swap mock-agent.js for a real backend client later; app.js only depends on runAgent(). -->
+  <!-- app.js only depends on runAgent() from api-agent.js (falls back to mock-agent.js). -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+  <script src="config.js"></script>
   <script src="routing.js"></script>
   <script src="mock-agent.js"></script>
+  <script src="api-agent.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

@@ -94,6 +94,8 @@ body {
 /* place cards */
 .places { display: grid; gap: 8px; margin-top: 10px; white-space: normal; }
 .place { border: 1.5px dashed var(--line); border-radius: 12px; padding: 10px 12px; background: #fffaf0; }
+.place__photo { display: block; width: calc(100% + 24px); height: 120px; object-fit: cover; margin: -10px -12px 8px; border-radius: 11px 11px 0 0; background: var(--line); }
+.place { overflow: hidden; }
 .place__top { display: flex; justify-content: space-between; gap: 8px; font-weight: 700; }
 .place__meta { font-size: 12.5px; color: var(--muted); margin: 2px 0 6px; }
 .place__note { font-size: 13.5px; margin: 0 0 8px; }
@@ -123,7 +125,7 @@ body {
   width: 18px; height: 18px; border-radius: 50%; background: #2f7de1; border: 3px solid #fff;
   box-shadow: 0 0 0 0 rgba(47,125,225,.5); animation: ping 1.8s infinite;
 }
-.badge { font-size: 11px; padding: 2px 6px; border-radius: 6px; background: #e3f5ec; color: var(--green); font-weight: 700; white-space: nowrap; }
+.badge { align-self: flex-start; font-size: 11px; padding: 2px 6px; border-radius: 6px; background: #e3f5ec; color: var(--green); font-weight: 700; white-space: nowrap; }
 .badge--closed { background: #fde8e5; color: var(--red); }
 
 /* thinking bubble */

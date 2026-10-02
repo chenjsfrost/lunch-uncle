@@ -2,16 +2,20 @@
 
 A food-recommendation chatbot that answers like a kopitiam uncle. 🍜
 
-**Status:** wireframe. The UI, animations and uncle voice work, with a mock agent loop and sample data.
+It runs an agent loop: an OpenCode model searches Google Places, reads reviews, then recommends real places nearby. Walking directions appear on a map inside the chat.
 
-## Run it
+## Run it (real mode)
 
-Open `index.html` in a browser. No build step is needed.
-
-To use real geolocation, serve it over localhost:
+Needs Node 22 or later. Put your keys in `.env` (see `.env.example`), then:
 
 ```sh
-python3 -m http.server 8000   # then open http://localhost:8000
+npm start        # http://localhost:8787
 ```
 
-See [FEATURES.md](FEATURES.md) for the feature list, agent loop design and the plan for adding the OpenCode and Google Places keys.
+No `npm install` is needed because there are no dependencies.
+
+## Demo mode
+
+The GitHub Pages site (https://chenjsfrost.github.io/lunch-uncle/) is static, so it has no backend. It runs a mock agent with sample places and says "Demo mode" in the header. To make it live, deploy the backend and set its URL in `config.js`.
+
+See [FEATURES.md](FEATURES.md) for the features, the agent loop and the event protocol.
